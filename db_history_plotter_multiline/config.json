@@ -5,7 +5,6 @@
   "description": "Queries HA DB and generates plots with multiple sensors per graph. Supports MariaDB and SQLite",
   "url": "https://github.com/tominowind/db_history_plotter_multiline",
   "arch": ["aarch64", "amd64", "armv7", "armhf", "i386"],
-  "image": "ghcr.io/tominowind/db_history_plotter_multiline-{arch}",
   "startup": "application",
   "boot": "auto",
   "init": false,
