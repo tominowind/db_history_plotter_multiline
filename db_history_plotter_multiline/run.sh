@@ -1,3 +1,3 @@
 #!/bin/bash
 
-python /app/plotter.py
+python3 /app/plotter.py
