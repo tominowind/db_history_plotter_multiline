@@ -1,7 +1,7 @@
 name: "DB History Plotter Multiline"
 description: "Queries HA DB and generates plots with multiple sensors per graph. Supports MariaDB and SQLite"
 version: "2.0.0"
-slug: "db_history_plotter"
+slug: "db_history_plotter_multiline"
 init: false
 arch:
   - aarch64
