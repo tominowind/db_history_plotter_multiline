@@ -1,0 +1,70 @@
+{
+  "name": "DB History Plotter Multiline",
+  "version": "2.0.0",
+  "slug": "db_history_plotter",
+  "description": "Queries HA DB and generates plots with multiple sensors per graph. Supports MariaDB and SQLite",
+  "arch": ["aarch64", "amd64"],
+  "startup": "application",
+  "boot": "auto",
+  "init": false,
+  "map": ["media:rw", "homeassistant_config:ro"],
+  "build": {
+    "context": ".",
+    "dockerfile": "Dockerfile"
+  },
+  "options": {
+    "db_type": "mariadb",
+    "db_host": "core-mariadb",
+    "db_name": "homeassistant",
+    "db_user": "homeassistant",
+    "sqlite_file": "/homeassistant/home-assistant_v2.db",
+    "db_password": "",
+    "timezone": "Europe/Berlin",
+    "plots": [
+      {
+        "plot_id": "example_plot",
+        "plot_title": "Example - Last 24 Hours",
+        "hours_back": 24,
+        "y_label": "Value",
+        "y_axis_position": "left",
+        "sensors": [
+          {
+            "sensor_id": "sensor.vindstyrka_01_temperature",
+            "label": "Temperature (°C)",
+            "color": null
+          },
+          {
+            "sensor_id": "sensor.vindstyrka_01_humidity",
+            "label": "Humidity (%)",
+            "color": null
+          }
+        ]
+      }
+    ]
+  },
+  "schema": {
+    "db_type": "list(sqlite|mariadb)",
+    "db_host": "str",
+    "db_name": "str",
+    "db_user": "str",
+    "db_password": "str",
+    "timezone": "str",
+    "sqlite_file": "str",
+    "plots": [
+      {
+        "plot_id": "str",
+        "plot_title": "str",
+        "hours_back": "int",
+        "y_label": "str",
+        "y_axis_position": "list(left|right)",
+        "sensors": [
+          {
+            "sensor_id": "str",
+            "label": "str",
+            "color": "str?"
+          }
+        ]
+      }
+    ]
+  }
+}
