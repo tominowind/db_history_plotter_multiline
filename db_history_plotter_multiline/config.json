@@ -9,7 +9,10 @@
   "boot": "auto",
   "init": false,
   "host_network": false,
-  "map": ["/config:rw", "/media:rw"],
+  "map": [
+    { "type": "homeassistant_config", "read_only": false, "path": "/homeassistant" },
+    { "type": "media", "read_only": false }
+  ],
   "ports": {},
   "build": {
     "context": ".",
