@@ -1,13 +1,14 @@
+
 # DB History Plotter Multiline
 
 A Home Assistant addon that queries your HA database and generates historical sensor plots as PNG images with support for multiple sensors per graph, accessible via your HA dashboard.
 
-Most inspiration came from https://community.home-assistant.io/t/request-graph-image-from-sensor-history-over-telegram BUT the use-case was not suitable 
-and I did not want a custom integration that might break something and rather a "standalone" solution that does not harm anything at all
+This addon is a fork of [The-May/ha-addons – db_history_plotter](https://github.com/The-May/ha-addons/tree/main/db_history_plotter), extended with support for **multiple sensors per graph** (multiline plots), configurable Y-axis position, and per-sensor colors.
+
 
 ## Disclaimer
 
-This App/Addon was tested with MariaDB. SQLite was not tested and has been added with the help of AI. 
+This App/Addon was tested with SQLite was not tested and has been added with the help of AI. 
 Feel free to report if it works or not.
 
 ## Installation
@@ -115,39 +116,42 @@ plots:
         label: "Living Room"
         color: null
 ```
+### Using the Images in a Dashboard
 
-## Using the Images in a Dashboard
+Images are saved to  /media/db_history_plotter/  inside the container, which maps to  /media/local/db_history_plotter/  in HA's media server.
 
-Images are saved to `/media/db_history_plotter/` inside the container, which maps to `/media/local/db_history_plotter/` in HA's media server.
+Each image is named after its  plot_id  from the configuration.
 
-Add a **Picture** card to your dashboard and set the URL to:
-
+### Add a Picture card to your dashboard and set the URL to:
 ```
-/media/local/db_history_plotter/0.png   ← first plot
-/media/local/db_history_plotter/1.png   ← second plot
-/media/local/db_history_plotter/2.png   ← third plot
+/media/local/db_history_plotter/<plot_id>.png
 ```
-
-The image index matches the order of entries in your `plots` config list.
-
-## Using the Images with Telegram
+### For example, with the example configuration above:
+```
+/media/local/db_history_plotter/temperature_humidity.png
+/media/local/db_history_plotter/outdoor_weather.png
+/media/local/db_history_plotter/power_consumption.png
+```
+### Using the Images with Telegram
 
 The pictures can be used with Telegram automation.
 
-## Using the Images with the HA Companion App
+### Using the Images with the HA Companion App
 
 The pictures can be used with the HA Companion App (Push Message).
 
-## Changelog
+### Changelog
 
-### v2.0.0
-- **Breaking Change**: Configuration structure changed from `sensors` to `plots`
-- Multiline graph support: multiple sensors per plot
-- Customizable colors per sensor (or automatic from palette)
-- Configurable Y-axis position (left/right)
-- Improved legend display
-- Better performance with multiple sensors
+v2.0.0
 
-### v1.1.0
-- Initial release
-- Single sensor per plot support
+• Breaking Change: Configuration structure changed from  sensors  to  plots 
+• Multiline graph support: multiple sensors per plot
+• Customizable colors per sensor (or automatic from palette)
+• Configurable Y-axis position (left/right)
+• Improved legend display
+• Better performance with multiple sensors
+
+v1.1.0
+
+• Initial release
+• Single sensor per plot support
