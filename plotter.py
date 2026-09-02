@@ -25,7 +25,7 @@ DB_USER       = OPT["db_user"]
 DB_PASSWORD   = OPT["db_password"]
 SQLITE_FILE   = OPT["sqlite_file"]
 TIMEZONE_NAME = OPT.get("timezone", "UTC")
-SENSORS       = OPT["sensors"]
+PLOTS         = OPT.get("plots", [])
 
 # Paths inside the container
 CSV_DIR   = "/tmp/db_history_plotter"
@@ -36,6 +36,24 @@ TZ_LABEL = TIMEZONE_NAME
 
 os.makedirs(CSV_DIR, exist_ok=True)
 os.makedirs(IMAGE_DIR, exist_ok=True)
+
+
+# ============================================================================
+# Color Palette
+# ============================================================================
+
+DEFAULT_COLOR_PALETTE = [
+    "#1f77b4",  # blue
+    "#ff7f0e",  # orange
+    "#2ca02c",  # green
+    "#d62728",  # red
+    "#9467bd",  # purple
+    "#8c564b",  # brown
+    "#e377c2",  # pink
+    "#7f7f7f",  # gray
+    "#bcbd22",  # olive
+    "#17becf",  # cyan
+]
 
 
 # ============================================================================
@@ -115,7 +133,7 @@ print(
     f"  DB:       {DB_TYPE}"
     f"{' @ ' + DB_HOST if DB_TYPE == 'mariadb' else ''}"
 )
-print(f"  Sensors:  {len(SENSORS)}")
+print(f"  Plots:    {len(PLOTS)}")
 print(f"{'─' * 60}")
 
 
@@ -178,244 +196,218 @@ except Exception as e:
 
 
 # ============================================================================
-# Per-sensor loop
+# Per-plot loop
 # ============================================================================
 
-processed_sensors = 0
+processed_plots = 0
 
-for i, sensor in enumerate(SENSORS):
+for plot_idx, plot_config in enumerate(PLOTS):
 
-    sensor_id  = sensor["sensor_id"]
-    hours_back = int(sensor["hours_back"])
-    y_label    = sensor["y_label"]
-    plot_title = sensor["plot_title"]
-
-    csv_file = os.path.join(
-        CSV_DIR,
-        f"{i}.csv"
-    )
+    plot_id        = plot_config.get("plot_id", f"plot_{plot_idx}")
+    plot_title     = plot_config.get("plot_title", f"Plot {plot_idx}")
+    hours_back     = int(plot_config.get("hours_back", 24))
+    y_label        = plot_config.get("y_label", "Value")
+    y_axis_position = plot_config.get("y_axis_position", "left")
+    sensors_config = plot_config.get("sensors", [])
 
     image_file = os.path.join(
         IMAGE_DIR,
-        f"{i}.png"
+        f"{plot_idx}.png"
     )
 
     print()
     print(
-        f"[{i}] {sensor_id} "
-        f"(last {hours_back}h)"
+        f"[Plot {plot_idx}] {plot_id} "
+        f"({len(sensors_config)} sensor(s), last {hours_back}h)"
     )
 
+    if not sensors_config:
+        print(f"[Plot {plot_idx}] No sensors configured, skipping.")
+        continue
 
-    # ------------------------------------------------------------------------
-    # Build query
-    # ------------------------------------------------------------------------
+    # Fetch data for all sensors in this plot
+    all_dataframes = []
+    all_labels = []
+    all_colors = []
 
-    if DB_TYPE == "sqlite":
+    for sensor_idx, sensor_config in enumerate(sensors_config):
 
-        sql_query = f"""
-        SELECT
-            states.last_updated_ts,
-            states.state,
-            states_meta.entity_id
-        FROM states
-        JOIN states_meta
-            ON states.metadata_id = states_meta.metadata_id
-        WHERE states_meta.entity_id = ?
-          AND states.state NOT IN ('unavailable', 'unknown')
-          AND states.last_updated_ts >=
-              strftime('%s', 'now', ?)
-        ORDER BY states.state_id ASC;
-        """
+        sensor_id = sensor_config.get("sensor_id")
+        label     = sensor_config.get("label", sensor_id)
+        color     = sensor_config.get("color")
 
-        sql_params = (
-            sensor_id,
-            f"-{hours_back} hours",
+        if not color:
+            # Use default color from palette
+            color = DEFAULT_COLOR_PALETTE[
+                (sensor_idx + plot_idx) % len(DEFAULT_COLOR_PALETTE)
+            ]
+
+        print(f"  [{sensor_idx}] {sensor_id} → {label} (color: {color})")
+
+        csv_file = os.path.join(
+            CSV_DIR,
+            f"plot_{plot_idx}_sensor_{sensor_idx}.csv"
         )
 
-        print(
-            f"[{i}] Query range: "
-            f"last {hours_back}h (SQLite)"
-        )
-
-    else:
-
-        cutoff_ts = (
-            datetime.now(UTC).timestamp()
-            - hours_back * 3600
-        )
-
-        cutoff_local = datetime.fromtimestamp(
-            cutoff_ts,
-            tz=TZ
-        ).strftime("%Y-%m-%d %H:%M:%S")
-
-        print(
-            f"[{i}] Query range: "
-            f"{cutoff_local} → now ({TZ_LABEL})"
-        )
-
-        sql_query = """
-        SELECT
-            states.last_updated_ts,
-            states.state,
-            states_meta.entity_id
-        FROM states
-        JOIN states_meta
-            ON states.metadata_id = states_meta.metadata_id
-        WHERE states_meta.entity_id = %s
-          AND states.state NOT IN ('unavailable', 'unknown')
-          AND states.last_updated_ts >= %s
-        ORDER BY states.state_id ASC;
-        """
-
-        sql_params = (
-            sensor_id,
-            cutoff_ts,
-        )
-
-
-    # ------------------------------------------------------------------------
-    # Fetch
-    # ------------------------------------------------------------------------
-
-    t_query = time.monotonic()
-
-    try:
-
-        cursor = conn.cursor()
-
+        # Build query
         if DB_TYPE == "sqlite":
-            cursor.execute(
-                sql_query,
-                sql_params
+
+            sql_query = f"""
+            SELECT
+                states.last_updated_ts,
+                states.state,
+                states_meta.entity_id
+            FROM states
+            JOIN states_meta
+                ON states.metadata_id = states_meta.metadata_id
+            WHERE states_meta.entity_id = ?
+              AND states.state NOT IN ('unavailable', 'unknown')
+              AND states.last_updated_ts >=
+                  strftime('%s', 'now', ?)
+            ORDER BY states.state_id ASC;
+            """
+
+            sql_params = (
+                sensor_id,
+                f"-{hours_back} hours",
             )
+
         else:
-            cursor.execute(
-                sql_query,
-                sql_params
+
+            cutoff_ts = (
+                datetime.now(UTC).timestamp()
+                - hours_back * 3600
             )
 
-        rows = cursor.fetchall()
-        cursor.close()
+            sql_query = """
+            SELECT
+                states.last_updated_ts,
+                states.state,
+                states_meta.entity_id
+            FROM states
+            JOIN states_meta
+                ON states.metadata_id = states_meta.metadata_id
+            WHERE states_meta.entity_id = %s
+              AND states.state NOT IN ('unavailable', 'unknown')
+              AND states.last_updated_ts >= %s
+            ORDER BY states.state_id ASC;
+            """
 
-    except Exception as e:
+            sql_params = (
+                sensor_id,
+                cutoff_ts,
+            )
+
+        # Fetch
+        t_query = time.monotonic()
+
+        try:
+
+            cursor = conn.cursor()
+            cursor.execute(sql_query, sql_params)
+            rows = cursor.fetchall()
+            cursor.close()
+
+        except Exception as e:
+
+            print(
+                f"  [{sensor_idx}] ERROR querying "
+                f"{sensor_id}: {e}"
+            )
+            continue
+
+        elapsed_ms = (time.monotonic() - t_query) * 1000
 
         print(
-            f"[{i}] ERROR querying "
-            f"{sensor_id}: {e}"
+            f"  [{sensor_idx}] Fetched {len(rows)} rows "
+            f"({elapsed_ms:.0f} ms)"
         )
 
-        continue
+        if not rows:
+            print(
+                f"  [{sensor_idx}] No data for {sensor_id}, "
+                f"skipping this sensor."
+            )
+            continue
 
-    elapsed_ms = (
-        time.monotonic() - t_query
-    ) * 1000
+        # Write CSV
+        with open(csv_file, "w", newline="") as f:
+            csv.writer(f).writerows(rows)
 
-    print(
-        f"[{i}] Fetched {len(rows)} rows "
-        f"({elapsed_ms:.0f} ms)"
-    )
+        time.sleep(0.2)
 
+        # Load DataFrame
+        df = pd.read_csv(
+            csv_file,
+            names=[
+                "timestamp",
+                "value",
+                "entity_id"
+            ],
+            dtype={
+                "timestamp": object,
+                "value": object,
+                "entity_id": object,
+            },
+        )
 
-    # ------------------------------------------------------------------------
-    # No data
-    # ------------------------------------------------------------------------
+        # Convert timestamp/value to numeric
+        df["timestamp"] = pd.to_numeric(
+            df["timestamp"],
+            errors="coerce"
+        )
 
-    if not rows:
+        df["value"] = pd.to_numeric(
+            df["value"],
+            errors="coerce"
+        )
 
+        df = df.dropna(
+            subset=[
+                "timestamp",
+                "value"
+            ]
+        )
+
+        # Convert Unix timestamp UTC → configured timezone
+        df["timestamp"] = pd.to_datetime(
+            df["timestamp"].astype("float64"),
+            unit="s",
+            utc=True,
+            errors="raise"
+        ).dt.tz_convert(TZ)
+
+        all_dataframes.append(df)
+        all_labels.append(label)
+        all_colors.append(color)
+
+    # Plot all sensors
+    if not all_dataframes:
         print(
-            f"[{i}] No data for "
-            f"{sensor_id}, skipping plot."
+            f"[Plot {plot_idx}] No valid data for any sensor, "
+            f"skipping plot."
         )
-
         continue
-
-
-    # ------------------------------------------------------------------------
-    # Write CSV
-    # ------------------------------------------------------------------------
-
-    with open(
-        csv_file,
-        "w",
-        newline=""
-    ) as f:
-
-        csv.writer(f).writerows(rows)
-
-
-    # Keep this because the original working implementation
-    # used a short delay before reading the CSV.
-    time.sleep(0.5)
-
-
-    # ------------------------------------------------------------------------
-    # Load DataFrame
-    # ------------------------------------------------------------------------
-
-    df = pd.read_csv(
-        csv_file,
-        names=[
-            "timestamp",
-            "value",
-            "entity_id"
-        ],
-        dtype={
-            "timestamp": object,
-            "value": object,
-            "entity_id": object,
-        },
-    )
-
-
-    # Convert timestamp/value to numeric
-    df["timestamp"] = pd.to_numeric(
-        df["timestamp"],
-        errors="coerce"
-    )
-
-    df["value"] = pd.to_numeric(
-        df["value"],
-        errors="coerce"
-    )
-
-    df = df.dropna(
-        subset=[
-            "timestamp",
-            "value"
-        ]
-    )
-
-
-    # Convert Unix timestamp UTC → configured timezone
-    df["timestamp"] = pd.to_datetime(
-        df["timestamp"].astype("float64"),
-        unit="s",
-        utc=True,
-        errors="raise"
-    ).dt.tz_convert(TZ)
-
-
-    # ------------------------------------------------------------------------
-    # Plot
-    # ------------------------------------------------------------------------
 
     current_time_local = datetime.now(TZ)
 
     t_plot = time.monotonic()
 
     plt.figure(
-        figsize=(12, 6)
+        figsize=(14, 7)
     )
 
-    plt.plot(
-        df["timestamp"],
-        df["value"],
-        marker="o",
-        linestyle="-",
-        linewidth=2
-    )
+    for df, label, color in zip(all_dataframes, all_labels, all_colors):
+
+        plt.plot(
+            df["timestamp"],
+            df["value"],
+            marker="o",
+            linestyle="-",
+            linewidth=2,
+            label=label,
+            color=color,
+        )
 
     plt.title(
         f"{plot_title}\n"
@@ -430,7 +422,9 @@ for i, sensor in enumerate(SENSORS):
 
     plt.ylabel(y_label)
 
-    plt.grid(True)
+    plt.legend(loc="best")
+
+    plt.grid(True, alpha=0.3)
 
     plt.xticks(
         rotation=45
@@ -440,49 +434,21 @@ for i, sensor in enumerate(SENSORS):
 
     plt.savefig(
         image_file,
-        format="png"
+        format="png",
+        dpi=100
     )
 
     plt.close()
 
-    plot_ms = (
-        time.monotonic() - t_plot
-    ) * 1000
-
-
-    # ------------------------------------------------------------------------
-    # Statistics
-    # ------------------------------------------------------------------------
-
-    v_min = df["value"].min()
-    v_max = df["value"].max()
-
-    ts_first = (
-        df["timestamp"]
-        .iloc[0]
-        .strftime("%H:%M:%S")
-    )
-
-    ts_last = (
-        df["timestamp"]
-        .iloc[-1]
-        .strftime("%H:%M:%S")
-    )
+    plot_ms = (time.monotonic() - t_plot) * 1000
 
     print(
-        f"[{i}] Values: "
-        f"min={v_min:.2f}  "
-        f"max={v_max:.2f}  "
-        f"range={ts_first}–{ts_last}"
-    )
-
-    print(
-        f"[{i}] Saved → "
+        f"[Plot {plot_idx}] Saved → "
         f"{image_file} "
         f"({plot_ms:.0f} ms)"
     )
 
-    processed_sensors += 1
+    processed_plots += 1
 
 
 # ============================================================================
@@ -506,7 +472,7 @@ print()
 print(f"{'─' * 60}")
 print(
     f"  Done. "
-    f"{processed_sensors}/{len(SENSORS)} sensor(s) "
+    f"{processed_plots}/{len(PLOTS)} plot(s) "
     f"processed in {elapsed_total:.1f}s"
 )
 print(f"{'─' * 60}")

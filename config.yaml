@@ -1,6 +1,6 @@
-name: "DB History Plotter"
-description: "Queries HA DB and generates plots as PNG images. Supports MariaDB and SQlite"
-version: "1.1.0"
+name: "DB History Plotter Multiline"
+description: "Queries HA DB and generates plots with multiple sensors per graph. Supports MariaDB and SQLite"
+version: "2.0.0"
 slug: "db_history_plotter"
 init: false
 arch:
@@ -19,11 +19,19 @@ options:
   sqlite_file: "/homeassistant/home-assistant_v2.db"
   db_password: ""
   timezone: "Europe/Berlin"
-  sensors:
-    - sensor_id: "sensor.vindstyrka_01_temperature"
+  plots:
+    - plot_id: "example_plot"
+      plot_title: "Example - Last 24 Hours"
       hours_back: 24
-      y_label: "Temperature (°C)"
-      plot_title: "Example – Last 24 Hours"
+      y_label: "Value"
+      y_axis_position: "left"
+      sensors:
+        - sensor_id: "sensor.vindstyrka_01_temperature"
+          label: "Temperature (°C)"
+          color: null
+        - sensor_id: "sensor.vindstyrka_01_humidity"
+          label: "Humidity (%)"
+          color: null
 
 schema:
   db_type: "list(sqlite|mariadb)"
@@ -33,8 +41,13 @@ schema:
   db_password: str
   timezone: str
   sqlite_file: str
-  sensors:
-    - sensor_id: str
+  plots:
+    - plot_id: str
+      plot_title: str
       hours_back: int
       y_label: str
-      plot_title: str
+      y_axis_position: "list(left|right)"
+      sensors:
+        - sensor_id: str
+          label: str
+          color: str?
