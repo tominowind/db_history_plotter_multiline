@@ -1,0 +1,5 @@
+repositories:
+  - name: DB History Plotter Multiline
+    description: Queries HA database and generates historical sensor plots as PNG images with support for multiple sensors per graph
+    url: https://github.com/tominowind/db_history_plotter_multiline
+    maintainer: tominowind
