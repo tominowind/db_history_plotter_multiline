@@ -115,32 +115,32 @@ plots:
       - sensor_id: "sensor.living_room_power"
         label: "Living Room"
         color: null
-
-Using the Images in a Dashboard
+```
+### Using the Images in a Dashboard
 
 Images are saved to  /media/db_history_plotter/  inside the container, which maps to  /media/local/db_history_plotter/  in HA's media server.
 
 Each image is named after its  plot_id  from the configuration.
 
-Add a Picture card to your dashboard and set the URL to:
-
+### Add a Picture card to your dashboard and set the URL to:
+```
 /media/local/db_history_plotter/<plot_id>.png
-
-For example, with the example configuration above:
-
+```
+### For example, with the example configuration above:
+```
 /media/local/db_history_plotter/temperature_humidity.png
 /media/local/db_history_plotter/outdoor_weather.png
 /media/local/db_history_plotter/power_consumption.png
-
-Using the Images with Telegram
+```
+### Using the Images with Telegram
 
 The pictures can be used with Telegram automation.
 
-Using the Images with the HA Companion App
+### Using the Images with the HA Companion App
 
 The pictures can be used with the HA Companion App (Push Message).
 
-Changelog
+### Changelog
 
 v2.0.0
 
