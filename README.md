@@ -1,9 +1,9 @@
 
 # DB History Plotter Multiline
 
-A Home Assistant addon that queries your HA database and generates historical sensor plots as PNG images with support for multiple sensors per graph, accessible via your HA dashboard.
+A Home Assistant addon that queries your HA database and generates historical sensor plots as PNG images with support for multiple sensors and vertically stacked subplots, accessible via your HA dashboard.
 
-This addon is a fork of [The-May/ha-addons – db_history_plotter](https://github.com/The-May/ha-addons/tree/main/db_history_plotter), extended with support for **multiple sensors per graph** (multiline plots), configurable Y-axis position, and per-sensor colors.
+This addon is a fork of [The-May/ha-addons – db_history_plotter](https://github.com/The-May/ha-addons/tree/main/db_history_plotter), extended with support for **multiple sensors per graph**, optional plot groups, configurable Y-axis position, and per-sensor colors.
 
 
 ## Disclaimer
@@ -37,7 +37,7 @@ All settings are edited via the addon's **Configuration** tab in the HA UI.
 
 ### Plot Configuration
 
-Each entry in `plots` defines one graph image. Each plot can contain one or more sensors.
+Each entry in `plots` defines one image. Its sensors can share one graph or be assigned to named plot groups that are stacked vertically.
 
 | Option | Description |
 |---|---|
@@ -57,6 +57,15 @@ Each sensor in a plot can have its own color and label.
 | `sensor_id` | Home Assistant entity ID (e.g., `sensor.temperature`) |
 | `label` | Label for this sensor in the legend (e.g., "Living Room Temperature") |
 | `color` | Hex color code (e.g., `#FF0000` for red), or `null` for automatic color from palette |
+| `plot_group` | Optional subplot name. Sensors with the same value share one panel. Omit it for the original single-panel behavior. |
+| `y_label` | Optional Y-axis label for this sensor's plot group. The first configured value in a group is used. |
+| `y_axis_position` | Optional `left` or `right`, overriding the plot-level axis position for this sensor. |
+
+### Vertically Stacked Plot Groups
+
+Set `plot_group` on each sensor to place related series in the same subplot. Groups are rendered in first-occurrence order, use aligned/shared time axes, and retain independent Y-axis scales. The exported PNG remains 12 × 6 inches for a single panel and grows vertically by four inches per panel for multi-panel plots.
+
+Existing configurations need no changes: sensors without `plot_group` continue to render together as one graph. If grouped and ungrouped sensors are mixed, the ungrouped sensors appear in an `Other` panel.
 
 #### Default Color Palette
 
@@ -77,18 +86,32 @@ If `color` is not specified or set to `null`, colors are automatically assigned 
 
 ```yaml
 plots:
-  - plot_id: "temperature_humidity"
-    plot_title: "Temperature & Humidity - Last 24 Hours"
+  - plot_id: "indoor_climate"
+    plot_title: "Indoor Climate - Last 24 Hours"
     hours_back: 24
     y_label: "Value"
     y_axis_position: "left"
     sensors:
       - sensor_id: "sensor.living_room_temperature"
-        label: "Temperature (°C)"
+        label: "Living Room"
         color: "#FF6B6B"
+        plot_group: "Temperatures"
+        y_label: "Temperature (°C)"
+      - sensor_id: "sensor.bedroom_temperature"
+        label: "Bedroom"
+        color: null
+        plot_group: "Temperatures"
+        y_label: "Temperature (°C)"
       - sensor_id: "sensor.living_room_humidity"
-        label: "Humidity (%)"
-        color: null  # Will use automatic color (Orange)
+        label: "Living Room"
+        color: "#4D96FF"
+        plot_group: "Humidity"
+        y_label: "Humidity (%)"
+      - sensor_id: "sensor.bedroom_humidity"
+        label: "Bedroom"
+        color: null
+        plot_group: "Humidity"
+        y_label: "Humidity (%)"
 
   - plot_id: "outdoor_weather"
     plot_title: "Outdoor Weather - Last 48 Hours"
@@ -128,7 +151,7 @@ Each image is named after its  plot_id  from the configuration.
 ```
 ### For example, with the example configuration above:
 ```
-/media/local/db_history_plotter/temperature_humidity.png
+/media/local/db_history_plotter/indoor_climate.png
 /media/local/db_history_plotter/outdoor_weather.png
 /media/local/db_history_plotter/power_consumption.png
 ```
@@ -141,6 +164,13 @@ The pictures can be used with Telegram automation.
 The pictures can be used with the HA Companion App (Push Message).
 
 ### Changelog
+
+v2.1.0
+
+• Vertically stacked plot groups in one exported image
+• Shared time axis with independent Y-axis scales per group
+• Adaptive image height and per-panel legends
+• Existing single-panel configurations remain supported
 
 v2.0.0
 

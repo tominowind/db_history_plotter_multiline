@@ -16,7 +16,9 @@ from zoneinfo import ZoneInfo
 # ============================================================================
 
 # Read config from Home Assistant App Configuration
-with open("/data/options.json") as f:
+OPTIONS_FILE = os.environ.get("OPTIONS_FILE", "/data/options.json")
+
+with open(OPTIONS_FILE) as f:
     OPT = json.load(f)
 
 DB_TYPE       = OPT["db_type"]
@@ -29,8 +31,8 @@ TIMEZONE_NAME = OPT.get("timezone", "UTC")
 PLOTS         = OPT["plots"]
 
 # Paths inside the container
-CSV_DIR   = "/tmp/db_history_plotter"
-IMAGE_DIR = "/media/db_history_plotter"
+CSV_DIR   = os.environ.get("CSV_DIR", "/tmp/db_history_plotter")
+IMAGE_DIR = os.environ.get("IMAGE_DIR", "/media/db_history_plotter")
 
 TZ       = ZoneInfo(TIMEZONE_NAME)
 TZ_LABEL = TIMEZONE_NAME
@@ -282,6 +284,58 @@ def fetch_sensor_history(sensor_id, hours_back, csv_path):
 
 
 # ============================================================================
+# Helpers: organize sensors into vertically stacked plot groups
+# ============================================================================
+
+def build_plot_groups(plot):
+    """Return ordered subplot groups while preserving legacy plot behavior."""
+
+    groups = {}
+    fallback_y_label = plot.get("y_label", "Value")
+
+    for sensor in plot.get("sensors", []):
+        configured_group = sensor.get("plot_group")
+        group_key = configured_group or "__default__"
+        sensor_y_label = sensor.get("y_label")
+
+        if group_key not in groups:
+            groups[group_key] = {
+                "title": configured_group,
+                "y_label": sensor_y_label,
+                "sensors": [],
+            }
+        elif sensor_y_label:
+            if groups[group_key]["y_label"] is None:
+                groups[group_key]["y_label"] = sensor_y_label
+            elif sensor_y_label != groups[group_key]["y_label"]:
+                print(
+                    f"  WARNING: plot group "
+                    f"'{configured_group or 'default'}' uses multiple "
+                    f"y_label values; keeping "
+                    f"'{groups[group_key]['y_label']}'."
+                )
+
+        groups[group_key]["sensors"].append(sensor)
+
+    plot_groups = list(groups.values())
+
+    for group in plot_groups:
+        group["y_label"] = group["y_label"] or fallback_y_label
+
+        if len(plot_groups) > 1:
+            if group["title"] is None:
+                group["title"] = "Other"
+
+    return plot_groups
+
+
+def get_figure_size(group_count):
+    """Keep legacy dimensions for one panel and add height for each extra panel."""
+
+    return (12, max(6, group_count * 4))
+
+
+# ============================================================================
 # Per-plot loop
 # ============================================================================
 
@@ -292,68 +346,128 @@ for p_idx, plot in enumerate(PLOTS):
     plot_id       = plot.get("plot_id", f"plot_{p_idx}")
     plot_title    = plot.get("plot_title", plot_id)
     hours_back    = int(plot.get("hours_back", 24))
-    y_label       = plot.get("y_label", "Value")
     y_axis_pos    = plot.get("y_axis_position", "left")
-    sensors       = plot.get("sensors", [])
+    plot_groups   = build_plot_groups(plot)
+    sensor_count  = sum(len(group["sensors"]) for group in plot_groups)
 
     image_file = os.path.join(IMAGE_DIR, f"{plot_id}.png")
 
     print()
-    print(f"[{plot_id}] '{plot_title}' — {len(sensors)} sensor(s), last {hours_back}h")
+    print(
+        f"[{plot_id}] '{plot_title}' — {sensor_count} sensor(s), "
+        f"{len(plot_groups)} panel(s), last {hours_back}h"
+    )
 
-    fig, ax_left = plt.subplots(figsize=(12, 6))
-    ax_right = None
+    if not plot_groups:
+        print(f"[{plot_id}] No sensors configured, skipping plot.")
+        continue
 
-    lines_for_legend = []
+    fig, axes = plt.subplots(
+        nrows=len(plot_groups),
+        ncols=1,
+        figsize=get_figure_size(len(plot_groups)),
+        sharex=len(plot_groups) > 1,
+        squeeze=False,
+    )
+    axes = axes[:, 0]
+
     plotted_any = False
+    sensor_index = 0
 
-    for s_idx, sensor in enumerate(sensors):
+    for group_index, (group, ax_left) in enumerate(zip(plot_groups, axes)):
+        ax_right = None
+        lines_for_legend = []
+        group_plotted = False
+        left_plotted = False
+        right_plotted = False
 
-        sensor_id = sensor["sensor_id"]
-        label     = sensor.get("label", sensor_id)
-        color     = sensor.get("color") or None
-        position  = sensor.get("y_axis_position", y_axis_pos)
+        for sensor in group["sensors"]:
+            sensor_id = sensor["sensor_id"]
+            label     = sensor.get("label", sensor_id)
+            color     = sensor.get("color") or None
+            position  = sensor.get("y_axis_position", y_axis_pos)
 
-        csv_file = os.path.join(CSV_DIR, f"{plot_id}_{s_idx}.csv")
+            csv_file = os.path.join(
+                CSV_DIR,
+                f"{plot_id}_{sensor_index}.csv",
+            )
 
-        print(f"  [{s_idx}] {sensor_id} ({label})")
+            print(
+                f"  [{group_index}:{sensor_index}] "
+                f"{sensor_id} ({label})"
+            )
 
-        df = fetch_sensor_history(sensor_id, hours_back, csv_file)
+            df = fetch_sensor_history(sensor_id, hours_back, csv_file)
+            sensor_index += 1
 
-        if df is None or df.empty:
-            continue
+            if df is None or df.empty:
+                continue
 
-        # Keep this because the original working implementation
-        # used a short delay before reading the CSV.
-        time.sleep(0.5)
+            # Keep this because the original working implementation
+            # used a short delay before reading the CSV.
+            time.sleep(0.5)
 
-        target_ax = ax_left
+            target_ax = ax_left
 
-        if position == "right":
-            if ax_right is None:
-                ax_right = ax_left.twinx()
-            target_ax = ax_right
+            if position == "right":
+                if ax_right is None:
+                    ax_right = ax_left.twinx()
+                target_ax = ax_right
+                right_plotted = True
+            else:
+                left_plotted = True
 
-        (line,) = target_ax.plot(
-            df["timestamp"],
-            df["value"],
-            marker="o",
-            linestyle="-",
-            linewidth=2,
-            label=label,
-            color=color,
-        )
+            (line,) = target_ax.plot(
+                df["timestamp"],
+                df["value"],
+                marker="o",
+                linestyle="-",
+                linewidth=2,
+                label=label,
+                color=color,
+            )
 
-        lines_for_legend.append(line)
-        plotted_any = True
+            lines_for_legend.append(line)
+            group_plotted = True
+            plotted_any = True
 
-        v_min = df["value"].min()
-        v_max = df["value"].max()
+            v_min = df["value"].min()
+            v_max = df["value"].max()
 
-        print(
-            f"      Values: min={v_min:.2f}  max={v_max:.2f}  "
-            f"points={len(df)}"
-        )
+            print(
+                f"      Values: min={v_min:.2f}  max={v_max:.2f}  "
+                f"points={len(df)}"
+            )
+
+        if group["title"]:
+            ax_left.set_title(group["title"], fontsize=11)
+
+        if left_plotted or not right_plotted:
+            ax_left.set_ylabel(group["y_label"])
+        ax_left.grid(True)
+
+        if group_index == len(plot_groups) - 1:
+            ax_left.set_xlabel(f"Timestamp ({TZ_LABEL})")
+
+        if right_plotted:
+            ax_right.set_ylabel(f"{group['y_label']} (right axis)")
+
+        if lines_for_legend:
+            ax_left.legend(
+                handles=lines_for_legend,
+                loc="best",
+                ncols=min(3, len(lines_for_legend)),
+                fontsize="small",
+            )
+        elif not group_plotted:
+            ax_left.text(
+                0.5,
+                0.5,
+                "No data available",
+                ha="center",
+                va="center",
+                transform=ax_left.transAxes,
+            )
 
     if not plotted_any:
         print(f"[{plot_id}] No data for any sensor, skipping plot.")
@@ -362,27 +476,22 @@ for p_idx, plot in enumerate(PLOTS):
 
     current_time_local = datetime.now(TZ)
 
-    ax_left.set_title(
+    generated_title = (
         f"{plot_title}\n"
-        f"Generated: {current_time_local.strftime('%Y-%m-%d %H:%M:%S')} {TZ_LABEL}"
+        f"Generated: "
+        f"{current_time_local.strftime('%Y-%m-%d %H:%M:%S')} {TZ_LABEL}"
     )
 
-    ax_left.set_xlabel(f"Timestamp ({TZ_LABEL})")
-    ax_left.set_ylabel(y_label)
-    ax_left.grid(True)
+    if len(plot_groups) == 1 and plot_groups[0]["title"] is None:
+        axes[0].set_title(generated_title)
+    else:
+        fig.suptitle(generated_title)
 
-    for label_tick in ax_left.get_xticklabels():
+    for label_tick in axes[-1].get_xticklabels():
         label_tick.set_rotation(45)
+        label_tick.set_horizontalalignment("right")
 
-    if ax_right is not None:
-        ax_right.set_ylabel(f"{y_label} (right axis)")
-
-    ax_left.legend(
-        handles=lines_for_legend,
-        loc="best"
-    )
-
-    fig.tight_layout()
+    fig.tight_layout(rect=(0, 0, 1, 0.95))
 
     t_plot = time.monotonic()
     fig.savefig(image_file, format="png")
