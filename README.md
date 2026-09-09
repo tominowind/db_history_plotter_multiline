@@ -56,11 +56,10 @@ Each sensor in a plot can have its own color and label.
 |---|---|
 | `sensor_id` | Home Assistant entity ID (e.g., `sensor.temperature`) |
 | `label` | Label for this sensor in the legend (e.g., "Living Room Temperature") |
-| `color` | Optional hex color code (e.g., `#FF0000` for red). Omit it to use the automatic palette. |
+| `color` | Hex color code (e.g., `#FF0000` for red), or `null` for automatic color from palette |
 | `plot_group` | Optional subplot name. Sensors with the same value share one panel. Omit it for the original single-panel behavior. |
 | `y_label` | Optional Y-axis label for this sensor's plot group. The first configured value in a group is used. |
 | `y_axis_position` | Optional `left` or `right`, overriding the plot-level axis position for this sensor. |
-| `multiplier` | Optional numeric multiplier applied before plotting (default: `1`). Invalid explicit values stop the run with a configuration error. |
 
 ### Vertically Stacked Plot Groups
 
@@ -72,14 +71,13 @@ In the visual Configuration editor:
 
 1. Open the item under **Plots**.
 2. Open each item under that plot's **Sensors** list.
-3. Set **Plot group (subplot)** and **Y-axis label** in the sensor dialog.
-4. Keep every series in the same `sensors` list. Do not add another nested `sensors` item for the next group.
+3. Set **Plot group (subplot)**, **Y-axis label**, and **Y-axis position** in the sensor dialog.
 
-To refresh the visual-editor schema, reload the app repository and then install version 2.1.2 or newer. The fields are optional so existing single-panel configurations remain valid.
+To refresh the visual-editor schema, reload the app repository and then install version 2.1.1 or newer. The fields are optional so existing single-panel configurations remain valid.
 
 #### Default Color Palette
 
-If `color` is not specified, colors are automatically assigned from this palette:
+If `color` is not specified or set to `null`, colors are automatically assigned from this palette:
 
 1. Blue (#1f77b4)
 2. Orange (#ff7f0e)
@@ -96,48 +94,58 @@ If `color` is not specified, colors are automatically assigned from this palette
 
 ```yaml
 plots:
-  - plot_id: '0'
-    plot_title: Teploty a vlhkosť
-    hours_back: 25
-    y_label: Hodnota
-    y_axis_position: left
+  - plot_id: "indoor_climate"
+    plot_title: "Indoor Climate - Last 24 Hours"
+    hours_back: 24
+    y_label: "Value"
+    y_axis_position: "left"
     sensors:
-      # The first occurrence of Teplota makes it the first subplot.
-      - sensor_id: sensor.tz3000_yupc0pb7_ts0201_temperature
-        label: Vonku
-        plot_group: Teplota
-        y_label: Stupne Celzia
-      - sensor_id: sensor.spalna_teplomer_xiaomi_temperature
-        label: Spálňa
-        plot_group: Teplota
-        y_label: Stupne Celzia
-      - sensor_id: sensor.wcko_temperature
-        label: WC
-        plot_group: Teplota
-        y_label: Stupne Celzia
-      - sensor_id: sensor.teplomer_xiaomi_lywsd03mmc_z_temperature
-        label: Balkón
-        plot_group: Teplota
-        y_label: Stupne Celzia
+      - sensor_id: "sensor.living_room_temperature"
+        label: "Living Room"
+        color: "#FF6B6B"
+        plot_group: "Temperatures"
+        y_label: "Temperature (°C)"
+      - sensor_id: "sensor.bedroom_temperature"
+        label: "Bedroom"
+        color: null
+        plot_group: "Temperatures"
+        y_label: "Temperature (°C)"
+      - sensor_id: "sensor.living_room_humidity"
+        label: "Living Room"
+        color: "#4D96FF"
+        plot_group: "Humidity"
+        y_label: "Humidity (%)"
+      - sensor_id: "sensor.bedroom_humidity"
+        label: "Bedroom"
+        color: null
+        plot_group: "Humidity"
+        y_label: "Humidity (%)"
 
-      # Vlhkosť first appears later, so it becomes the second subplot.
-      - sensor_id: sensor.tz3000_yupc0pb7_ts0201_humidity
-        label: Vonku
-        plot_group: Vlhkosť
-        y_label: Relatívna vlhkosť (%)
-        multiplier: 10
-      - sensor_id: sensor.spalna_teplomer_xiaomi_humidity
-        label: Spálňa
-        plot_group: Vlhkosť
-        y_label: Relatívna vlhkosť (%)
-      - sensor_id: sensor.wcko_humidity
-        label: WC
-        plot_group: Vlhkosť
-        y_label: Relatívna vlhkosť (%)
-      - sensor_id: sensor.teplomer_xiaomi_lywsd03mmc_z_humidity
-        label: Balkón
-        plot_group: Vlhkosť
-        y_label: Relatívna vlhkosť (%)
+  - plot_id: "outdoor_weather"
+    plot_title: "Outdoor Weather - Last 48 Hours"
+    hours_back: 48
+    y_label: "Temperature (°C)"
+    y_axis_position: "left"
+    sensors:
+      - sensor_id: "sensor.outdoor_temperature"
+        label: "Temperature"
+        color: null  # Automatic color
+
+  - plot_id: "power_consumption"
+    plot_title: "Power Usage - Last 7 Days"
+    hours_back: 168
+    y_label: "Power (W)"
+    y_axis_position: "left"
+    sensors:
+      - sensor_id: "sensor.kitchen_power"
+        label: "Kitchen"
+        color: "#FFD700"
+      - sensor_id: "sensor.bedroom_power"
+        label: "Bedroom"
+        color: "#4169E1"
+      - sensor_id: "sensor.living_room_power"
+        label: "Living Room"
+        color: null
 ```
 ### Using the Images in a Dashboard
 
@@ -151,7 +159,9 @@ Each image is named after its  plot_id  from the configuration.
 ```
 ### For example, with the example configuration above:
 ```
-/media/local/db_history_plotter/0.png
+/media/local/db_history_plotter/indoor_climate.png
+/media/local/db_history_plotter/outdoor_weather.png
+/media/local/db_history_plotter/power_consumption.png
 ```
 ### Using the Images with Telegram
 
@@ -163,18 +173,10 @@ The pictures can be used with the HA Companion App (Push Message).
 
 ### Changelog
 
-v2.1.2
-
-• Added a validated per-sensor numeric multiplier
-• Exposed multiplier in the EN/SK visual Configuration editor
-• Existing sensors default to multiplier 1
-
 v2.1.1
 
-• Added visual-editor labels and guidance for subplot fields
-• Documented the required single `sensors` list structure
-• Added compatibility handling for accidentally nested sensor lists
-• Added tests for legacy parsing and deterministic subplot order
+• Added English and Slovak visual-editor labels for subplot fields
+• Documented how to edit subplot settings in the sensor dialog
 
 v2.1.0
 

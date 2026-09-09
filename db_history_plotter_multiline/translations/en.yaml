@@ -38,9 +38,6 @@ configuration:
     name: Y-axis label
   y_axis_position:
     name: Y-axis position
-  multiplier:
-    name: Value multiplier
-    description: Multiplies numeric history values before plotting. Defaults to 1.
   color:
     name: Line color
     description: "Optional hexadecimal color such as #FF6B6B."

@@ -10,12 +10,6 @@ import pandas as pd
 from datetime import datetime, UTC
 from zoneinfo import ZoneInfo
 
-from plot_config import (
-    apply_sensor_multiplier,
-    build_plot_groups,
-    get_figure_size,
-)
-
 
 # ============================================================================
 # Configuration
@@ -290,6 +284,58 @@ def fetch_sensor_history(sensor_id, hours_back, csv_path):
 
 
 # ============================================================================
+# Helpers: organize sensors into vertically stacked plot groups
+# ============================================================================
+
+def build_plot_groups(plot):
+    """Return ordered subplot groups while preserving legacy plot behavior."""
+
+    groups = {}
+    fallback_y_label = plot.get("y_label", "Value")
+
+    for sensor in plot.get("sensors", []):
+        configured_group = sensor.get("plot_group")
+        group_key = configured_group or "__default__"
+        sensor_y_label = sensor.get("y_label")
+
+        if group_key not in groups:
+            groups[group_key] = {
+                "title": configured_group,
+                "y_label": sensor_y_label,
+                "sensors": [],
+            }
+        elif sensor_y_label:
+            if groups[group_key]["y_label"] is None:
+                groups[group_key]["y_label"] = sensor_y_label
+            elif sensor_y_label != groups[group_key]["y_label"]:
+                print(
+                    f"  WARNING: plot group "
+                    f"'{configured_group or 'default'}' uses multiple "
+                    f"y_label values; keeping "
+                    f"'{groups[group_key]['y_label']}'."
+                )
+
+        groups[group_key]["sensors"].append(sensor)
+
+    plot_groups = list(groups.values())
+
+    for group in plot_groups:
+        group["y_label"] = group["y_label"] or fallback_y_label
+
+        if len(plot_groups) > 1:
+            if group["title"] is None:
+                group["title"] = "Other"
+
+    return plot_groups
+
+
+def get_figure_size(group_count):
+    """Keep legacy dimensions for one panel and add height for each extra panel."""
+
+    return (12, max(6, group_count * 4))
+
+
+# ============================================================================
 # Per-plot loop
 # ============================================================================
 
@@ -301,12 +347,7 @@ for p_idx, plot in enumerate(PLOTS):
     plot_title    = plot.get("plot_title", plot_id)
     hours_back    = int(plot.get("hours_back", 24))
     y_axis_pos    = plot.get("y_axis_position", "left")
-    try:
-        plot_groups = build_plot_groups(plot)
-    except ValueError as error:
-        print(f"[{plot_id}] CONFIG ERROR: {error}")
-        raise SystemExit(1) from error
-
+    plot_groups   = build_plot_groups(plot)
     sensor_count  = sum(len(group["sensors"]) for group in plot_groups)
 
     image_file = os.path.join(IMAGE_DIR, f"{plot_id}.png")
@@ -345,7 +386,6 @@ for p_idx, plot in enumerate(PLOTS):
             label     = sensor.get("label", sensor_id)
             color     = sensor.get("color") or None
             position  = sensor.get("y_axis_position", y_axis_pos)
-            multiplier = sensor["multiplier"]
 
             csv_file = os.path.join(
                 CSV_DIR,
@@ -362,11 +402,6 @@ for p_idx, plot in enumerate(PLOTS):
 
             if df is None or df.empty:
                 continue
-
-            df["value"] = apply_sensor_multiplier(df["value"], sensor)
-
-            if multiplier != 1:
-                print(f"      Multiplier: x{multiplier:g}")
 
             # Keep this because the original working implementation
             # used a short delay before reading the CSV.
