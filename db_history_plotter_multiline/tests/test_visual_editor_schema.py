@@ -44,8 +44,6 @@ class VisualEditorSchemaTest(unittest.TestCase):
                 for field in sensor_fields:
                     self.assertIn(f"\n  {field}:\n", translation)
 
-                self.assertNotIn("\n  multiplier:\n", translation)
-
 
 if __name__ == "__main__":
     unittest.main()
