@@ -175,7 +175,7 @@ The pictures can be used with the HA Companion App (Push Message).
 
 v2.1.1
 
-• Added English and Slovak visual-editor labels for subplot fields
+• Added English visual-editor labels for subplot fields
 • Documented how to edit subplot settings in the sensor dialog
 
 v2.1.0

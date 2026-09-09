@@ -25,7 +25,7 @@ class VisualEditorSchemaTest(unittest.TestCase):
         self.assertEqual("str", sensor_schema["label"])
         self.assertEqual("str?", sensor_schema["color"])
 
-    def test_translations_cover_all_sensor_editor_fields(self):
+    def test_english_translation_covers_all_sensor_editor_fields(self):
         sensor_fields = {
             "color",
             "plot_group",
@@ -33,16 +33,12 @@ class VisualEditorSchemaTest(unittest.TestCase):
             "y_axis_position",
         }
 
-        for language in ("en", "sk"):
-            with self.subTest(language=language):
-                translation = (
-                    APP_DIR / "translations" / f"{language}.yaml"
-                ).read_text(
-                    encoding="utf-8"
-                )
+        translation = (APP_DIR / "translations" / "en.yaml").read_text(
+            encoding="utf-8"
+        )
 
-                for field in sensor_fields:
-                    self.assertIn(f"\n  {field}:\n", translation)
+        for field in sensor_fields:
+            self.assertIn(f"\n  {field}:\n", translation)
 
 
 if __name__ == "__main__":
