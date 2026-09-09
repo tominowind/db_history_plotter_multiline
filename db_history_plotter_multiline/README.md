@@ -67,6 +67,14 @@ Set `plot_group` on each sensor to place related series in the same subplot. Gro
 
 Existing configurations need no changes: sensors without `plot_group` continue to render together as one graph. If grouped and ungrouped sensors are mixed, the ungrouped sensors appear in an `Other` panel.
 
+In the visual Configuration editor:
+
+1. Open the item under **Plots**.
+2. Open each item under that plot's **Sensors** list.
+3. Set **Plot group (subplot)**, **Y-axis label**, and **Y-axis position** in the sensor dialog.
+
+To refresh the visual-editor schema, reload the app repository and then install version 2.1.1 or newer. The fields are optional so existing single-panel configurations remain valid.
+
 #### Default Color Palette
 
 If `color` is not specified or set to `null`, colors are automatically assigned from this palette:
@@ -164,6 +172,11 @@ The pictures can be used with Telegram automation.
 The pictures can be used with the HA Companion App (Push Message).
 
 ### Changelog
+
+v2.1.1
+
+• Added English visual-editor labels for subplot fields
+• Documented how to edit subplot settings in the sensor dialog
 
 v2.1.0
 

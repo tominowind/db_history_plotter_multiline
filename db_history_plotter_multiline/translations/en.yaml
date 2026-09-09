@@ -1,0 +1,12 @@
+---
+configuration:
+  plot_group:
+    name: Plot group (subplot)
+    description: Sensors with the same group are drawn in one panel.
+  y_label:
+    name: Y-axis label
+  y_axis_position:
+    name: Y-axis position
+  color:
+    name: Line color
+    description: "Optional hexadecimal color such as #FF6B6B."
