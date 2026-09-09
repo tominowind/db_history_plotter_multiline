@@ -18,6 +18,7 @@ RUN pip install --no-cache-dir \
 
 COPY run.sh /run.sh
 COPY plotter.py /app/plotter.py
+COPY plot_config.py /app/plot_config.py
 
 RUN chmod +x /run.sh
 

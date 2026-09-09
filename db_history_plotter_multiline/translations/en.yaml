@@ -1,0 +1,43 @@
+---
+configuration:
+  db_type:
+    name: Database type
+  db_host:
+    name: Database host
+  db_name:
+    name: Database name
+  db_user:
+    name: Database user
+  db_password:
+    name: Database password
+  sqlite_file:
+    name: SQLite file
+  timezone:
+    name: Time zone
+  plots:
+    name: Plots
+    description: Images to export. Edit a plot to manage its sensors.
+  plot_id:
+    name: Plot ID
+    description: Output PNG filename without the extension.
+  plot_title:
+    name: Plot title
+  hours_back:
+    name: Hours of history
+  sensors:
+    name: Sensors
+    description: Edit each sensor to assign its plot group and Y-axis label.
+  sensor_id:
+    name: Entity ID
+  label:
+    name: Legend label
+  plot_group:
+    name: Plot group (subplot)
+    description: Sensors with the same group are drawn in one panel.
+  y_label:
+    name: Y-axis label
+  y_axis_position:
+    name: Y-axis position
+  color:
+    name: Line color
+    description: "Optional hexadecimal color such as #FF6B6B."
