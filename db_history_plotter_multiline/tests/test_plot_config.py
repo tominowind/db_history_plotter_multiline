@@ -3,8 +3,10 @@ import unittest
 from pathlib import Path
 
 from db_history_plotter_multiline.plot_config import (
+    apply_sensor_multiplier,
     build_plot_groups,
     get_figure_size,
+    get_sensor_multiplier,
 )
 
 APP_DIR = Path(__file__).resolve().parents[1]
@@ -67,6 +69,7 @@ class PlotConfigTest(unittest.TestCase):
             [sensor["sensor_id"] for sensor in groups[0]["sensors"]],
         )
         self.assertEqual("Relatívna vlhkosť (%)", groups[1]["y_label"])
+        self.assertEqual(1, groups[1]["sensors"][0]["multiplier"])
         self.assertEqual((12, 8), get_figure_size(len(groups)))
 
     def test_accidentally_nested_sensor_list_is_flattened(self):
@@ -105,6 +108,32 @@ class PlotConfigTest(unittest.TestCase):
             "list(left|right)?",
             sensor_schema["y_axis_position"],
         )
+        self.assertEqual("float?", sensor_schema["multiplier"])
+
+    def test_multiplier_defaults_to_one_and_applies_ten_times(self):
+        self.assertEqual(1, get_sensor_multiplier({"sensor_id": "sensor.one"}))
+        self.assertEqual(
+            25,
+            apply_sensor_multiplier(
+                2.5,
+                {
+                    "sensor_id": "sensor.humidity",
+                    "multiplier": 10,
+                },
+            ),
+        )
+
+    def test_multiplier_rejects_invalid_explicit_values(self):
+        for value in ("ten", None, True, float("inf"), int("9" * 400)):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "Invalid multiplier.*sensor.humidity",
+                ):
+                    get_sensor_multiplier({
+                        "sensor_id": "sensor.humidity",
+                        "multiplier": value,
+                    })
 
 
 if __name__ == "__main__":

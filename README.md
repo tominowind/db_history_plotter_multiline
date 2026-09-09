@@ -60,6 +60,7 @@ Each sensor in a plot can have its own color and label.
 | `plot_group` | Optional subplot name. Sensors with the same value share one panel. Omit it for the original single-panel behavior. |
 | `y_label` | Optional Y-axis label for this sensor's plot group. The first configured value in a group is used. |
 | `y_axis_position` | Optional `left` or `right`, overriding the plot-level axis position for this sensor. |
+| `multiplier` | Optional numeric multiplier applied before plotting (default: `1`). Invalid explicit values stop the run with a configuration error. |
 
 ### Vertically Stacked Plot Groups
 
@@ -74,7 +75,7 @@ In the visual Configuration editor:
 3. Set **Plot group (subplot)** and **Y-axis label** in the sensor dialog.
 4. Keep every series in the same `sensors` list. Do not add another nested `sensors` item for the next group.
 
-To refresh the visual-editor schema, reload the app repository and then install version 2.1.1 or newer. The fields are optional so existing single-panel configurations remain valid.
+To refresh the visual-editor schema, reload the app repository and then install version 2.1.2 or newer. The fields are optional so existing single-panel configurations remain valid.
 
 #### Default Color Palette
 
@@ -124,6 +125,7 @@ plots:
         label: Vonku
         plot_group: Vlhkosť
         y_label: Relatívna vlhkosť (%)
+        multiplier: 10
       - sensor_id: sensor.spalna_teplomer_xiaomi_humidity
         label: Spálňa
         plot_group: Vlhkosť
@@ -160,6 +162,12 @@ The pictures can be used with Telegram automation.
 The pictures can be used with the HA Companion App (Push Message).
 
 ### Changelog
+
+v2.1.2
+
+• Added a validated per-sensor numeric multiplier
+• Exposed multiplier in the EN/SK visual Configuration editor
+• Existing sensors default to multiplier 1
 
 v2.1.1
 

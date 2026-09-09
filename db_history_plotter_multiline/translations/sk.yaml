@@ -38,6 +38,9 @@ configuration:
     name: Názov osi Y
   y_axis_position:
     name: Umiestnenie osi Y
+  multiplier:
+    name: Násobiteľ hodnoty
+    description: Pred vykreslením vynásobí číselné hodnoty. Predvolená hodnota je 1.
   color:
     name: Farba čiary
     description: "Voliteľná hexadecimálna farba, napríklad #FF6B6B."

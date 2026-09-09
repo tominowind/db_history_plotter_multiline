@@ -1,4 +1,42 @@
+import math
+
+
 DEFAULT_GROUP_KEY = "__default__"
+
+
+def get_sensor_multiplier(sensor):
+    """Return a finite numeric multiplier, defaulting to one when omitted."""
+
+    raw_multiplier = sensor.get("multiplier", 1)
+    sensor_id = sensor.get("sensor_id", "<unknown>")
+
+    if isinstance(raw_multiplier, bool):
+        raise ValueError(
+            f"Invalid multiplier {raw_multiplier!r} for '{sensor_id}'; "
+            "expected a finite number."
+        )
+
+    try:
+        multiplier = float(raw_multiplier)
+    except (OverflowError, TypeError, ValueError) as error:
+        raise ValueError(
+            f"Invalid multiplier {raw_multiplier!r} for '{sensor_id}'; "
+            "expected a finite number."
+        ) from error
+
+    if not math.isfinite(multiplier):
+        raise ValueError(
+            f"Invalid multiplier {raw_multiplier!r} for '{sensor_id}'; "
+            "expected a finite number."
+        )
+
+    return multiplier
+
+
+def apply_sensor_multiplier(values, sensor):
+    """Scale numeric sensor history values using validated configuration."""
+
+    return values * get_sensor_multiplier(sensor)
 
 
 def normalize_sensor_entries(sensor_entries, warn=print):
@@ -37,6 +75,8 @@ def build_plot_groups(plot, warn=print):
     sensors = normalize_sensor_entries(plot.get("sensors", []), warn)
 
     for sensor in sensors:
+        sensor = dict(sensor)
+        sensor["multiplier"] = get_sensor_multiplier(sensor)
         configured_group = sensor.get("plot_group")
         group_key = configured_group or DEFAULT_GROUP_KEY
         sensor_y_label = sensor.get("y_label")

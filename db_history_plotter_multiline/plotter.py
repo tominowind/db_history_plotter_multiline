@@ -10,7 +10,11 @@ import pandas as pd
 from datetime import datetime, UTC
 from zoneinfo import ZoneInfo
 
-from plot_config import build_plot_groups, get_figure_size
+from plot_config import (
+    apply_sensor_multiplier,
+    build_plot_groups,
+    get_figure_size,
+)
 
 
 # ============================================================================
@@ -341,6 +345,7 @@ for p_idx, plot in enumerate(PLOTS):
             label     = sensor.get("label", sensor_id)
             color     = sensor.get("color") or None
             position  = sensor.get("y_axis_position", y_axis_pos)
+            multiplier = sensor["multiplier"]
 
             csv_file = os.path.join(
                 CSV_DIR,
@@ -357,6 +362,11 @@ for p_idx, plot in enumerate(PLOTS):
 
             if df is None or df.empty:
                 continue
+
+            df["value"] = apply_sensor_multiplier(df["value"], sensor)
+
+            if multiplier != 1:
+                print(f"      Multiplier: x{multiplier:g}")
 
             # Keep this because the original working implementation
             # used a short delay before reading the CSV.
