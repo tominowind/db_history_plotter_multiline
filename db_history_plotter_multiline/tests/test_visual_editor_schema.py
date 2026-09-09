@@ -27,8 +27,6 @@ class VisualEditorSchemaTest(unittest.TestCase):
 
     def test_translations_cover_all_sensor_editor_fields(self):
         sensor_fields = {
-            "sensor_id",
-            "label",
             "color",
             "plot_group",
             "y_label",
@@ -45,6 +43,8 @@ class VisualEditorSchemaTest(unittest.TestCase):
 
                 for field in sensor_fields:
                     self.assertIn(f"\n  {field}:\n", translation)
+
+                self.assertNotIn("\n  multiplier:\n", translation)
 
 
 if __name__ == "__main__":

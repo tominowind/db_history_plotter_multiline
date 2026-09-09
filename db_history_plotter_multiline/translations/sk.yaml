@@ -1,36 +1,5 @@
 ---
 configuration:
-  db_type:
-    name: Typ databázy
-  db_host:
-    name: Server databázy
-  db_name:
-    name: Názov databázy
-  db_user:
-    name: Používateľ databázy
-  db_password:
-    name: Heslo databázy
-  sqlite_file:
-    name: SQLite súbor
-  timezone:
-    name: Časové pásmo
-  plots:
-    name: Grafy
-    description: Exportované obrázky. Senzory upravíte otvorením grafu.
-  plot_id:
-    name: ID grafu
-    description: Názov výstupného PNG súboru bez prípony.
-  plot_title:
-    name: Názov grafu
-  hours_back:
-    name: Počet hodín histórie
-  sensors:
-    name: Senzory
-    description: Pri každom senzore nastavte skupinu grafu a názov osi Y.
-  sensor_id:
-    name: ID entity
-  label:
-    name: Názov v legende
   plot_group:
     name: Skupina grafu (subplot)
     description: Senzory s rovnakou skupinou sa zobrazia v jednom paneli.
